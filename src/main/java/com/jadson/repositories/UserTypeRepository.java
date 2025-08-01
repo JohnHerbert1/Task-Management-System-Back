@@ -1,0 +1,10 @@
+package com.jadson.repositories;
+
+import com.jadson.models.entities.UserType;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface UserTypeRepository extends JpaRepository<UserType, Long> {
+
+}
