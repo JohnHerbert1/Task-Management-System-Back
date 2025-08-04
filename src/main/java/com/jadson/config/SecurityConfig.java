@@ -22,11 +22,12 @@ public class SecurityConfig {
                 .csrf().disable() // Desativa proteção CSRF (apenas se não for usar sessão)
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(HttpMethod.GET, "/user/lista").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/user/{id}" ).hasRole("ADMIN")
                         .anyRequest().permitAll() // Libera todas as rotas sem autenticação
 
                 )
                 .formLogin().disable() // Desativa a tela de login padrão
-                .httpBasic(); // Desativa o login por prompt do navegador (opcional)
+                .httpBasic(); // Desativa o login por prompt do navegador ( opcional)
 
         return http.build();
     }

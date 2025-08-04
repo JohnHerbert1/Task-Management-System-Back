@@ -3,6 +3,7 @@ package com.jadson.services;
 
 
 import com.jadson.dto.requests.UserDTO;
+import com.jadson.exceptions.BusinessRuleException;
 import com.jadson.models.entities.User;
 import com.jadson.models.enumerations.ActiveType;
 import com.jadson.models.enumerations.UserType;
@@ -14,13 +15,14 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import javax.print.DocFlavor;
 import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @RequiredArgsConstructor
 @Service
 public class UserServiceImpl {
-
 
     private final UserRepository repository;
 
@@ -58,10 +60,14 @@ public class UserServiceImpl {
 
     }
 
-    public void deleteUser(long id){
-        repository.deleteById(id);
-        log.info("Conta deletada do sistema: " );
-
+    public Boolean deleteUser(long id) {
+        Optional<User> userOptional = repository.findById(id);
+        if(userOptional.isPresent()){
+            repository.delete(userOptional.get());
+        }else {
+            return false;
+        }
+        return  Boolean.TRUE;
     }
 
     //Utils from user:
