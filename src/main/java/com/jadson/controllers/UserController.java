@@ -1,6 +1,7 @@
 package com.jadson.controllers;
 
 
+import com.jadson.config.JwtTokenProvider;
 import com.jadson.dto.requests.LoginRequest;
 import com.jadson.dto.requests.UserDTO;
 import com.jadson.services.UserServiceImpl;
@@ -18,6 +19,7 @@ import java.util.List;
 public class UserController {
 
     private final UserServiceImpl service;
+    private final JwtTokenProvider jwtTokenProvider;
 
 
     @PostMapping( value = "/register")
@@ -40,5 +42,21 @@ public class UserController {
     }
 
 
+
+
+
+    @PostMapping("/logout")
+    public ResponseEntity<String> logout(@RequestHeader("Authorization") String header) {
+        if (header == null || !header.startsWith("Bearer ")) {
+            return ResponseEntity.badRequest().body("Token inválido");
+        }
+
+        String token = header.substring(7);
+        if (!jwtTokenProvider.validateToken(token)) {
+            return ResponseEntity.status(401).body("Token inválido ou expirado");
+        }
+
+        return ResponseEntity.ok("Logout realizado com sucesso (token descartado no cliente)");
+    }
 
 }
