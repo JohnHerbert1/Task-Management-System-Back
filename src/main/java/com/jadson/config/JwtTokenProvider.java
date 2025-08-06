@@ -23,17 +23,27 @@ public class JwtTokenProvider {
         return Keys.hmacShaKeyFor(keyBytes);
     }
 
-    public String generateToken(String username) {
+    public String generateToken(String username,Integer tokenVersion) {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + validityInMs);
 
         return Jwts.builder()
                 .setSubject(username)
+                .claim("ver", tokenVersion)
                 .setIssuedAt(now)
                 .setExpiration(expiry)
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
+
+    public Claims parseClaims(String token) throws JwtException {
+        return Jwts.parserBuilder()
+                .setSigningKey(getSigningKey())
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
+    }
+
 
     public boolean validateToken(String token) {
         try {
@@ -54,5 +64,10 @@ public class JwtTokenProvider {
                 .parseClaimsJws(token)
                 .getBody()
                 .getSubject();
+    }
+
+
+    public Integer getTokenVersion(String token) {
+        return parseClaims(token).get("ver", Integer.class);
     }
 }

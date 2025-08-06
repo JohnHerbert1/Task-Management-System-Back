@@ -45,7 +45,7 @@ public class UserController {
                     )
             );
             User user = (User) authentication.getPrincipal();
-            String token = jwtTokenProvider.generateToken(user.getUsername());
+            String token = jwtTokenProvider.generateToken(user.getUsername(), user.getTokenVersion());
             TokenDTO tokenDTO = new TokenDTO(token, user.getEmail());
             return ResponseEntity.ok(tokenDTO);
         } catch (AuthenticationException e) {
@@ -70,11 +70,20 @@ public class UserController {
         if (header == null || !header.startsWith("Bearer ")) {
             return ResponseEntity.badRequest().body("Token inválido");
         }
+
         String token = header.substring(7);
-        SecurityContextHolder.clearContext();
+
         if (!jwtTokenProvider.validateToken(token)) {
             return ResponseEntity.status(401).body("Token inválido ou expirado");
         }
-        return ResponseEntity.ok("Logout realizado com sucesso (token descartado no cliente)");
+
+        // Invalida o token atual incrementando o tokenVersion
+        String email = jwtTokenProvider.getUsername(token);
+        service.incrementTokenVersion(email); // ← Invalida todos os tokens emitidos até agora
+
+        // Limpa o contexto de segurança
+        SecurityContextHolder.clearContext();
+
+        return ResponseEntity.ok("Logout realizado com sucesso");
     }
 }

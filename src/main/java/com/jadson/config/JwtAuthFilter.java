@@ -1,6 +1,9 @@
 package com.jadson.config;
 
+import com.jadson.models.entities.User;
 import com.jadson.services.AuthorizationService;
+import com.jadson.services.UserServiceImpl;
+import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,6 +24,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private final JwtTokenProvider jwtTokenProvider;
     private final AuthorizationService authorizationService;
 
+
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
@@ -33,7 +37,16 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             String token = authHeader.substring(7);
             if (jwtTokenProvider.validateToken(token)) {
                 String username = jwtTokenProvider.getUsername(token);
+                Claims claims = jwtTokenProvider.parseClaims(token);
                 var userDetails = authorizationService.loadUserByUsername(username);
+                Integer verInToken = claims.get("ver", Integer.class);
+                Integer currentVer = ((User)userDetails).getTokenVersion();
+
+                // ⚠️ Verifica se o token foi invalidado (ex: logout)
+                if (!verInToken.equals(currentVer)) {
+                    filterChain.doFilter(request, response); // Token antigo → ignora autenticação
+                    return;
+                }
 
                 var authentication = new UsernamePasswordAuthenticationToken(
                         userDetails, null, userDetails.getAuthorities());

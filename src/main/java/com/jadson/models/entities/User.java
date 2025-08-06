@@ -69,6 +69,12 @@ public class User implements UserDetails {
     @Column(name = "last_update_date")
     private LocalDate lastUpdate;
 
+
+    @Column(name = "token_version", nullable = false)
+    private Integer tokenVersion = 0;
+
+
+
     @PrePersist
     private void prePersist() {
         if (this.registrationDate == null) {

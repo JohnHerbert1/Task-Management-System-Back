@@ -13,7 +13,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import javax.print.DocFlavor;
 import java.util.List;
@@ -26,7 +28,7 @@ public class UserServiceImpl {
 
     private final UserRepository repository;
 
-    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    private final PasswordEncoder passwordEncoder;
 
     public void creat (UserDTO requestDTO){
 
@@ -58,6 +60,14 @@ public class UserServiceImpl {
 
     public void BlockUser(Id id){
 
+    }
+
+    @Transactional
+    public void incrementTokenVersion(String email) {
+        repository.findByEmail(email).ifPresent(user -> {
+            user.setTokenVersion(user.getTokenVersion() + 1);
+            repository.save(user);
+        });
     }
 
     public Boolean deleteUser(long id) {
