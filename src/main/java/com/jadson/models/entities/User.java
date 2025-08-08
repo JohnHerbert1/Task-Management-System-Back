@@ -73,7 +73,9 @@ public class User implements UserDetails {
     @Column(name = "token_version", nullable = false)
     private Integer tokenVersion = 0;
 
-
+    // Associações: Um usuário pode ter várias tarefas (um-para-muitos)
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
+    private List<Task> tasks;
 
     @PrePersist
     private void prePersist() {

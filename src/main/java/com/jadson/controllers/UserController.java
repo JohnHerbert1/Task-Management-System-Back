@@ -59,10 +59,16 @@ public class UserController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         service.deleteUser(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("update")
+    public ResponseEntity<String> update(
+            @RequestBody @Valid UserDTO dto) {
+         service.updateUser(dto);
+        return ResponseEntity.status(201).body("Sucesso ao atualizar usuario");
     }
 
     @PostMapping("/logout")

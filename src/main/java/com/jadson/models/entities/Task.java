@@ -34,6 +34,10 @@ public class Task {
     @Column (nullable = false)
     private LocalTime hour;
 
+    @ManyToOne
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+
     @Builder
     public Task(String title, String description, LocalDate date, LocalTime hour) {
         this.title = title;

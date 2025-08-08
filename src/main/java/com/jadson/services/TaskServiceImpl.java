@@ -3,7 +3,9 @@ package com.jadson.services;
 import java.util.List;
 
 import com.jadson.exceptions.TaskNotFoundException;
+import com.jadson.models.entities.User;
 import org.springframework.context.annotation.Primary;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import com.jadson.dto.requests.TaskRequestDTO;
@@ -23,28 +25,34 @@ public class TaskServiceImpl implements TaskService {
 
     private final TaskMapper taskMapper;
 
+    private User getCurrentUser() {
+        return (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+    }
+
     @Override
     public TaskResponseDTO findById(Long idTask) {
         return taskMapper.toTaskDTO(returnTask(idTask));
     }
 
-    @Override
     public List<TaskResponseDTO> findAll() {
-        return taskMapper.toTaskListDTO(taskRepository.findAll());
+        // Retorna apenas as tarefas do usuário logado
+        User currentUser = getCurrentUser();
+        return taskMapper.toTaskListDTO(taskRepository.findByUser(currentUser));
     }
 
     @Override
     public TaskResponseDTO createTask(TaskRequestDTO taskRequestDTO) {
+        User currentUser = getCurrentUser();
         Task task = taskMapper.toTask(taskRequestDTO);
+        task.setUser(currentUser);//salva tesk especifica do usuario logado.
         return taskMapper.toTaskDTO(taskRepository.save(task));
     }
 
     public TaskResponseDTO updateTask(TaskRequestDTO taskRequestDTO, Long idTask) {
-        // 1. Buscar a tarefa existente pelo ID
-        Task existingTask = taskRepository.findById(idTask)
-                .orElseThrow(() -> new RuntimeException("Task not found for update with ID: " + idTask));
-        // Substitua RuntimeException por uma exceção customizada (ex: ResourceNotFoundException)
-        // e trate-a com um @ControllerAdvice para retornar 404 Not Found.
+        User currentUser = getCurrentUser();
+        // ↘️ FILTRO POR USUÁRIO
+        Task existingTask = taskRepository.findByIdAndUser(idTask, currentUser)
+                .orElseThrow(() -> new TaskNotFoundException(idTask));
 
         // Atualiza os campos da tarefa existente APENAS SE o novo valor não for nulo/vazio,
         if (taskRequestDTO.getTitle() != null && !taskRequestDTO.getTitle().trim().isEmpty()) {
@@ -72,20 +80,29 @@ public class TaskServiceImpl implements TaskService {
 
     @Override
     public String deleteTask(Long idTask) {
+
+        User currentUser = getCurrentUser();
+        // ↘️ FILTRO POR USUÁRIO
+        Task existingTask = taskRepository.findByIdAndUser(idTask, currentUser)
+                .orElseThrow(() -> new TaskNotFoundException(idTask));
+
         taskRepository.deleteById(idTask);
         return "Task id: " + idTask + " deleted";
     }
 
     @Override
     public String deleteAllTasks() {
-        taskRepository.deleteAll();
-        return "All tasks deleted";
+        User currentUser = getCurrentUser();
+        // ↘️ DELETA SÓ AS TASKS DO USUÁRIO
+        taskRepository.deleteAllByUser(currentUser);
+        return "All tasks of current user deleted";
     }
 
     // Método para encontrar tarefa no banco de dados
     //  Method to find task in database
     private Task returnTask(Long idTask) {
-        return taskRepository.findById(idTask)
+        User currentUser = getCurrentUser();
+        return taskRepository.findByIdAndUser(idTask, currentUser)
                 .orElseThrow(() -> new TaskNotFoundException(idTask));
     }
 

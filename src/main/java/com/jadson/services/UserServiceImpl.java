@@ -12,6 +12,7 @@ import jakarta.persistence.Id;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -29,6 +30,11 @@ public class UserServiceImpl {
     private final UserRepository repository;
 
     private final PasswordEncoder passwordEncoder;
+
+    private User getCurrentUser() {
+        return (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+    }
+
 
     public void creat (UserDTO requestDTO){
 
@@ -54,13 +60,38 @@ public class UserServiceImpl {
     }
 
 
-    public  void updateUser(UserDTO requestDTO){
+    @Transactional
+    public  void updateUser(UserDTO requestDTO) {
 
+        // 1) Obtem o usuário autenticado
+        User current = getCurrentUser();
+
+        // 2) Se veio password, codifica e seta
+        if (requestDTO.password() != null && !requestDTO.password().isBlank()) {
+            current.setPassword(passwordEncoder.encode(requestDTO.password()));
+        }
+
+        // 3) Se veio name, email ou outros campos, setar
+        if (requestDTO.name() != null && !requestDTO.name().isBlank()) {
+            current.setName(requestDTO.name());
+        }
+        if (requestDTO.email() != null && !requestDTO.email().isBlank() &&
+                !requestDTO.email().equals(current.getEmail())) {
+
+            // opcional: validar se novo email já existe
+            if (repository.findByEmail(requestDTO.email()).isPresent()) {
+                current.setEmail(current.getEmail());//caso o email que ele queira atualizar já pre exista então so seta pra o email anterior.
+            }
+            current.setEmail(requestDTO.email());
+        }
+
+        // 4) (Se tiver outros campos no DTO, trate aqui)
+
+        // 5) Salvando alterações
+        repository.save(current);
     }
 
-    public void BlockUser(Id id){
 
-    }
 
     @Transactional
     public void incrementTokenVersion(String email) {
