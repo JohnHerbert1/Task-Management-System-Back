@@ -31,16 +31,11 @@ O sistema de gerenciamento de tarefas é uma aplicação web desenvolvida com o 
    * Edite qualquer tarefa para alterar seu status, prazos, descrição ou prioridade.
 
    * Marque tarefas como concluídas com apenas um clique.
-
-4. ### **📆 Visão de Agenda**
-
-   * ### Acompanhe suas tarefas em uma visualização de calendário para facilitar o planejamento da sua semana ou mês.
-
-5. ### **🔔 Lembretes e Notificações**
+4. ### **🔔 Lembretes e Notificações**
 
    * Receba alertas automáticos sobre prazos de tarefas que estão próximas do vencimento.
 
-6. ### **👥 Gestão de Usuários (opcional)**
+5. ### **👥 Gestão de Usuários (opcional)**
 
    * Crie múltiplos usuários e permita o gerenciamento de tarefas em equipe.
 
