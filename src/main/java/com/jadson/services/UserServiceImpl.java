@@ -2,6 +2,8 @@ package com.jadson.services;
 
 
 
+import com.jadson.config.JwtTokenProvider;
+import com.jadson.dto.requests.TokenDTO;
 import com.jadson.dto.requests.UserDTO;
 import com.jadson.exceptions.BusinessRuleException;
 import com.jadson.models.entities.User;
@@ -12,6 +14,8 @@ import jakarta.persistence.Id;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -28,7 +32,7 @@ import java.util.Optional;
 public class UserServiceImpl {
 
     private final UserRepository repository;
-
+    private final   JwtTokenProvider jwtTokenProvider;
     private final PasswordEncoder passwordEncoder;
 
     private User getCurrentUser() {
@@ -63,7 +67,7 @@ public class UserServiceImpl {
     @Transactional
     public  void updateUser(UserDTO requestDTO) {
 
-        // 1) Obtem o usuário autenticado
+        // 1) Obtém o usuário autenticado (assumo que getCurrentUser lê do SecurityContext)
         User current = getCurrentUser();
 
         // 2) Se veio password, codifica e seta
@@ -71,24 +75,45 @@ public class UserServiceImpl {
             current.setPassword(passwordEncoder.encode(requestDTO.password()));
         }
 
-        // 3) Se veio name, email ou outros campos, setar
+        // 3) Se veio name, setar
         if (requestDTO.name() != null && !requestDTO.name().isBlank()) {
             current.setName(requestDTO.name());
         }
-        if (requestDTO.email() != null && !requestDTO.email().isBlank() &&
-                !requestDTO.email().equals(current.getEmail())) {
 
-            // opcional: validar se novo email já existe
-            if (repository.findByEmail(requestDTO.email()).isPresent()) {
-                current.setEmail(current.getEmail());//caso o email que ele queira atualizar já pre exista então so seta pra o email anterior.
+        boolean emailChanged = false;
+        String oldEmail = current.getEmail();
+        if (requestDTO.email() != null && !requestDTO.email().isBlank()
+                && !requestDTO.email().equals(oldEmail)) {
+
+            // Verifica se o novo email já existe em outro usuário
+            boolean emailExiste = repository.findByEmail(requestDTO.email())
+                    .filter(user -> !user.getId().equals(current.getId()))
+                    .isPresent();
+
+            if (emailExiste) {
+                throw new IllegalArgumentException("Email já está em uso por outro usuário.");
+            } else {
+                current.setEmail(requestDTO.email());
+                emailChanged = true;
             }
-            current.setEmail(requestDTO.email());
         }
 
-        // 4) (Se tiver outros campos no DTO, trate aqui)
+        // 4) (tratar outros campos do DTO aqui)
 
-        // 5) Salvando alterações
-        repository.save(current);
+        User updated = repository.save(current); // saved and managed
+
+        // 6) Atualiza o SecurityContext para refletir o novo username/email (se a aplicação usa UserDetails)
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.isAuthenticated()) {
+            UsernamePasswordAuthenticationToken newAuth =
+                    new UsernamePasswordAuthenticationToken(updated, auth.getCredentials(), updated.getAuthorities());
+            SecurityContextHolder.getContext().setAuthentication(newAuth);
+        }
+
+        String newToken = jwtTokenProvider.generateToken(updated.getEmail(), updated.getTokenVersion());
+        TokenDTO tokenDTO = new TokenDTO(newToken, updated.getEmail());
+
+
     }
 
 

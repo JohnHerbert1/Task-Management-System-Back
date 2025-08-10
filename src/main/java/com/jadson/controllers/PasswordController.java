@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/password")
 public class PasswordController {
 
+
     private final PasswordResetService resetSvc;
 
     public PasswordController(PasswordResetService svc) {
@@ -20,6 +21,7 @@ public class PasswordController {
 
     @PostMapping("/forgot")
     public ResponseEntity<Void> forgot(@RequestParam String email) {
+        msg();
         resetSvc.forgotPassword(email);
         return ResponseEntity.accepted().build();
     }
@@ -30,5 +32,9 @@ public class PasswordController {
             @RequestParam String newPassword) {
         resetSvc.resetPassword(token, newPassword);
         return ResponseEntity.noContent().build();
+    }
+
+    private void msg(){
+        System.out.println("/dei certo");
     }
 }

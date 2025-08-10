@@ -4,8 +4,12 @@ import java.util.List;
 
 import com.jadson.exceptions.TaskNotFoundException;
 import com.jadson.models.entities.User;
+import com.jadson.repositories.UserRepository;
 import org.springframework.context.annotation.Primary;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 import com.jadson.dto.requests.TaskRequestDTO;
@@ -22,11 +26,38 @@ import lombok.RequiredArgsConstructor;
 public class TaskServiceImpl implements TaskService {
 
     private final TaskRepository taskRepository;
-
+    private final UserRepository userRepository;
     private final TaskMapper taskMapper;
 
     private User getCurrentUser() {
-        return (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
+        if (auth == null || !auth.isAuthenticated()) {
+            throw new AccessDeniedException("Usuário não autenticado");
+        }
+
+        Object principal = auth.getPrincipal();
+
+        // 1) Se já for a entidade User (quando você colocou o entity como principal)
+        if (principal instanceof com.jadson.models.entities.User) {
+            return (com.jadson.models.entities.User) principal;
+        }
+
+        // 2) Se for UserDetails (implementação do Spring Security)
+        if (principal instanceof UserDetails) {
+            String username = ((UserDetails) principal).getUsername();
+            return userRepository.findByEmail(username)
+                    .orElseThrow(() -> new AccessDeniedException("Usuário não encontrado: " + username));
+        }
+
+        // 3) Se for String (ex.: "anonymousUser" ou apenas o username), tenta pelo auth.getName()
+        String username = auth.getName();
+        if (username != null && !username.isBlank()) {
+            return userRepository.findByEmail(username)
+                    .orElseThrow(() -> new AccessDeniedException("Usuário não encontrado: " + username));
+        }
+
+        throw new AccessDeniedException("Não foi possível obter o usuário corrente");
     }
 
     @Override

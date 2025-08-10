@@ -19,6 +19,7 @@ drop SEQUENCE if exists "User_Logs_ID_Log_seq" CASCADE;
 drop SEQUENCE if exists "User_Type_ID_User_Type_seq" CASCADE;
 drop SEQUENCE if exists "user_logs_seq" CASCADE;
 
+
 DROP TABLE IF EXISTS "Chat_Bot" CASCADE;
 DROP TABLE IF EXISTS "User_Type" CASCADE;
 DROP TABLE IF EXISTS "Active_Type" CASCADE;
@@ -32,4 +33,5 @@ DROP TABLE IF EXISTS "Report_Task" CASCADE;
 DROP TABLE IF EXISTS "Schedule" CASCADE;
 DROP TABLE IF EXISTS "Task" CASCADE;
 DROP TABLE IF EXISTS "User" CASCADE;
+DROP TABLE IF EXISTS "password_reset_tokens" CASCADE;
 

@@ -65,9 +65,11 @@ public class UserController {
     }
 
     @PutMapping("update")
+
     public ResponseEntity<String> update(
             @RequestBody @Valid UserDTO dto) {
          service.updateUser(dto);
+
         return ResponseEntity.status(201).body("Sucesso ao atualizar usuario");
     }
 
