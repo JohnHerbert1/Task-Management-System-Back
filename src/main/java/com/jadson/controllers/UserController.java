@@ -5,6 +5,7 @@ import com.jadson.dto.requests.LoginRequest;
 import com.jadson.dto.requests.TokenDTO;
 import com.jadson.dto.requests.UserDTO;
 import com.jadson.models.entities.User;
+import com.jadson.services.TokenCacheService;
 import com.jadson.services.UserServiceImpl;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -15,10 +16,12 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 @RestController
@@ -28,6 +31,7 @@ public class UserController {
     private final AuthenticationManager authenticationManager;
     private final UserServiceImpl service;
     private final JwtTokenProvider jwtTokenProvider;
+    private final TokenCacheService tokenCacheService;
 
     @PostMapping("/register")
     public ResponseEntity<String> register(@RequestBody @Valid UserDTO dto) {
@@ -45,8 +49,14 @@ public class UserController {
                     )
             );
             User user = (User) authentication.getPrincipal();
-            String token = jwtTokenProvider.generateToken(user.getUsername(), user.getTokenVersion());
+
+            var roles = user.getAuthorities().stream()
+                    .map(GrantedAuthority::getAuthority)
+                    .collect(Collectors.toList());
+
+            String token = jwtTokenProvider.generateToken(user.getUsername(), user.getTokenVersion(),roles);
             TokenDTO tokenDTO = new TokenDTO(token, user.getEmail());
+            tokenCacheService.putUser(user);
             return ResponseEntity.ok(tokenDTO);
         } catch (AuthenticationException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
@@ -88,6 +98,8 @@ public class UserController {
         // Invalida o token atual incrementando o tokenVersion
         String email = jwtTokenProvider.getUsername(token);
         service.incrementTokenVersion(email); // ← Invalida todos os tokens emitidos até agora
+        tokenCacheService.evictUser(email); // remove do cache para que próxima requisição recarregue com nova versão
+
 
         // Limpa o contexto de segurança
         SecurityContextHolder.clearContext();

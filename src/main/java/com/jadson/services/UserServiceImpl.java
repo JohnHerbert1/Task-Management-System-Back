@@ -34,6 +34,7 @@ public class UserServiceImpl {
     private final UserRepository repository;
     private final   JwtTokenProvider jwtTokenProvider;
     private final PasswordEncoder passwordEncoder;
+    private final TokenCacheService tokenCacheService;
 
     private User getCurrentUser() {
         return (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
@@ -102,7 +103,6 @@ public class UserServiceImpl {
 
         User updated = repository.save(current); // saved and managed
 
-        // 6) Atualiza o SecurityContext para refletir o novo username/email (se a aplicação usa UserDetails)
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.isAuthenticated()) {
             UsernamePasswordAuthenticationToken newAuth =
@@ -110,8 +110,17 @@ public class UserServiceImpl {
             SecurityContextHolder.getContext().setAuthentication(newAuth);
         }
 
-        String newToken = jwtTokenProvider.generateToken(updated.getEmail(), updated.getTokenVersion());
-        TokenDTO tokenDTO = new TokenDTO(newToken, updated.getEmail());
+        // Se email mudou: evict do cache do email antigo
+        if (emailChanged) {
+            try {
+                tokenCacheService.evictUser(oldEmail);
+                log.debug("Evicted cache for old email '{}'", oldEmail);
+            } catch (Exception ex) {
+                log.warn("Falha ao evict cache para '{}': {}", oldEmail, ex.getMessage());
+            }
+        }
+
+        tokenCacheService.putUser(updated);  // atualiza cache com o usuário atualizado
 
 
     }
@@ -123,6 +132,8 @@ public class UserServiceImpl {
         repository.findByEmail(email).ifPresent(user -> {
             user.setTokenVersion(user.getTokenVersion() + 1);
             repository.save(user);
+            // atualiza/evita cache antigo
+            tokenCacheService.evictUser(email);
         });
     }
 

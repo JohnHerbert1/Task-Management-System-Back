@@ -8,6 +8,7 @@ import org.springframework.context.annotation.Configuration;
 
 import java.security.Key;
 import java.util.Date;
+import java.util.List;
 
 @Configuration
 public class JwtTokenProvider {
@@ -23,13 +24,14 @@ public class JwtTokenProvider {
         return Keys.hmacShaKeyFor(keyBytes);
     }
 
-    public String generateToken(String username,Integer tokenVersion) {
+    public String generateToken(String username,Integer tokenVersion, List<String> roles) {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + validityInMs);
 
         return Jwts.builder()
                 .setSubject(username)
                 .claim("ver", tokenVersion)
+                .claim( "roles", roles)
                 .setIssuedAt(now)
                 .setExpiration(expiry)
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)
@@ -69,5 +71,10 @@ public class JwtTokenProvider {
 
     public Integer getTokenVersion(String token) {
         return parseClaims(token).get("ver", Integer.class);
+    }
+
+    @SuppressWarnings("unchecked")
+    public List<String> getRoles(String token) {
+        return parseClaims(token).get("roles", List.class);
     }
 }
