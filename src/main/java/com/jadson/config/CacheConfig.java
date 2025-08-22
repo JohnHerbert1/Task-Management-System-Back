@@ -12,6 +12,6 @@ public class CacheConfig {
     @Bean
     public CacheManager cacheManager() {
         // cria caches "users" para UserDetails / entidade e "tokenVersions" (opcional)
-        return new ConcurrentMapCacheManager("users", "tokenVersions");
+        return new ConcurrentMapCacheManager("users", "tokenVersions","revokedTokens");
     }
 }

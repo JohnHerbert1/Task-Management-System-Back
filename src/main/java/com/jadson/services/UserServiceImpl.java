@@ -37,7 +37,11 @@ public class UserServiceImpl {
     private final TokenCacheService tokenCacheService;
 
     private User getCurrentUser() {
-        return (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated() || auth.getPrincipal() == null) {
+            throw new IllegalStateException("Usuário não autenticado");
+        }
+        return (User) auth.getPrincipal();
     }
 
 

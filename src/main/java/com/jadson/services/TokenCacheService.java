@@ -7,7 +7,10 @@ import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentMap;
+import java.util.stream.Collectors;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -75,5 +78,40 @@ public class TokenCacheService {
             cache.put(user.getUsername(), user);
             log.warn("Put user '{}' into cache (manual)", user.getUsername());
         }
+    }
+
+
+    public List<User> getAllCachedUsers() {
+        Cache cache = getUsersCache();
+        if (cache == null) return List.of();
+
+        Object nativeCache = cache.getNativeCache();
+        if (nativeCache instanceof ConcurrentMap<?, ?> map) {
+            return map.values().stream()
+                    .filter(v -> v instanceof User)
+                    .map(v -> (User) v)
+                    .collect(Collectors.toList());
+        } else {
+            log.warn("Native cache não é ConcurrentMap: {}", nativeCache != null ? nativeCache.getClass() : "null");
+            return List.of();
+        }
+    }
+
+    /** Retorna só os usernames (ou emails) que estão no cache. */
+    public List<String> getAllCachedUsernames() {
+        return getAllCachedUsers().stream()
+                .map(User::getUsername)
+                .collect(Collectors.toList());
+    }
+
+    /** Retorna o número de entradas no cache 'users'. */
+    public int getUsersCacheSize() {
+        Cache cache = getUsersCache();
+        if (cache == null) return 0;
+        Object nativeCache = cache.getNativeCache();
+        if (nativeCache instanceof ConcurrentMap<?, ?> map) {
+            return map.size();
+        }
+        return 0;
     }
 }

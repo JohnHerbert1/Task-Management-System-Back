@@ -3,12 +3,14 @@ package com.jadson.config;
 import com.jadson.models.entities.User;
 import com.jadson.services.AuthorizationService;
 import com.jadson.services.TokenCacheService;
+import com.jadson.services.TokenRevocationService;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -21,6 +23,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class JwtAuthFilter extends OncePerRequestFilter {
@@ -28,6 +31,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private final JwtTokenProvider jwtTokenProvider;
     private final AuthorizationService authorizationService;
     private final TokenCacheService tokenCacheService;
+    private final TokenRevocationService tokenRevocationService;
 
 
     @Override
@@ -47,13 +51,24 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 Integer verInToken = claims.get("ver", Integer.class);
                 Integer currentVer = ((User)userDetails).getTokenVersion();
 
+                String jti = claims.getId();
+                if (tokenRevocationService.isRevoked(jti)) {
+                    // Token específico foi revogado
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    response.setContentType("application/json");
+                    response.getWriter().write("{\"error\":\"Token revogado\"}");
+                    return;
+                }
+
 
                 User user = tokenCacheService.getCachedUserIfPresent(username)
                         .orElseGet(() -> tokenCacheService.getUser(username));
 
+                log.warn("CACHE JTWFILTER for user '{}'", user.getUsername());
+
                 try {
-                    Optional<User> maybeUser = tokenCacheService.getCachedUserIfPresent(username);
-                    user = maybeUser.orElseGet(() -> tokenCacheService.getUser(username)); // getUser carrega via AuthorizationService se necessário
+                    user = tokenCacheService.getUser(username); // getUser carrega via AuthorizationService se necessário
+                    log.warn("CACHE TRY FILTER for user '{}'", user.getUsername());
                 } catch (org.springframework.security.core.userdetails.UsernameNotFoundException e) {
                     // subject do token não existe mais (ex.: email antigo) -> ignora autenticação
                     filterChain.doFilter(request, response);

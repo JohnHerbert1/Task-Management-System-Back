@@ -9,6 +9,7 @@ import org.springframework.context.annotation.Configuration;
 import java.security.Key;
 import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 
 @Configuration
 public class JwtTokenProvider {
@@ -27,9 +28,11 @@ public class JwtTokenProvider {
     public String generateToken(String username,Integer tokenVersion, List<String> roles) {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + validityInMs);
+        String jti = UUID.randomUUID().toString();
 
         return Jwts.builder()
                 .setSubject(username)
+                .setId(jti)
                 .claim("ver", tokenVersion)
                 .claim( "roles", roles)
                 .setIssuedAt(now)
